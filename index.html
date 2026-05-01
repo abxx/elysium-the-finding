@@ -96,8 +96,8 @@ window.__scene_ref = scene;
         const WATER_LEVEL = 35.0;
 
         // Linear fog that fades exactly to the background color to hide the horizon seam!
-        scene.fog = new THREE.Fog(0x0077ff, 10.0, 1500.0);
-        scene.background = new THREE.Color(0x0077ff);
+		scene.background = new THREE.Color(0x0033aa); // Darker, richer deep blue
+		scene.fog = new THREE.Fog(0x0033aa, 10.0, 1500.0)
 
         const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 8000);
         camera.position.set(0, 35, 100); // Start 5 units below surface!
@@ -110,7 +110,7 @@ window.__scene_ref = scene;
         // ==========================================
         // 2. LIGHTING & ENVIRONMENT
         // ==========================================
-        const ambientLight = new THREE.AmbientLight(0x004488, 1.2);
+		const ambientLight = new THREE.AmbientLight(0x0088cc, 1.5); // Brighter, vibrant cyan glow
         scene.add(ambientLight);
 
         const sunLight = new THREE.DirectionalLight(0xaaddff, 1.5);
@@ -671,7 +671,7 @@ window.__scene_ref = scene;
         [Waking up the Ancient Ocean Spirit...]
     </div>
     <div id="ai-dialogue" style="font-size: 24px; font-weight: bold; margin-bottom: 15px; text-shadow: 0px 0px 10px #ff00ff; max-width: 700px; transition: opacity 1s;">
-        ~ *silence of the deep* ~
+        ~ *Find the Magic Pearl, mortal...* ~
     </div>
     <input type="text" id="player-input" placeholder="Press Tab to talk..." style="width: 500px; padding: 15px; background: rgba(0, 10, 20, 0.85); color: #00ffff; border: 2px solid #ff00ff; border-radius: 8px; font-size: 18px; display: none; pointer-events: auto; outline: none; box-shadow: 0 0 20px #ff00ff88;">
 </div>
@@ -845,7 +845,7 @@ Troll the player. Be funny.`;
             });
 
             loadingText.innerText = "[The Ocean is listening...]";
-            setTimeout(() => loadingText.style.display = 'none', 3000);
+            setTimeout(() => loadingText.style.display = 'none', 10000);
         } catch (err) {
             loadingText.innerText = "Failed to wake the ocean spirit: " + err;
             console.error("WebLLM Error:", err);
