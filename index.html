@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Elysium: The Deep Reef Masterpiece</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000511; font-family: sans-serif; }
+        canvas { display: block; }
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: rgba(0, 5, 17, 0.8); color: white; z-index: 10; cursor: pointer;
+        }
+        h1 { font-size: 3rem; margin-bottom: 10px; letter-spacing: 2px; text-transform: uppercase; color: #aaddff; }
+        p { font-size: 1.2rem; color: #88aabb; }
+    </style>
+
+    <style>
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(0, 20, 40, 0.95) 0%, rgba(20, 0, 40, 0.9) 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 9999; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        #overlay h1 { 
+            font-size: 80px; margin-bottom: 5px;
+            background: linear-gradient(to right, #00ffff, #ff00ff, #ffff00);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(255, 0, 255, 0.5);
+            animation: pulse 2s infinite;
+        }
+        #overlay h3 { color: #00ffcc; font-size: 28px; letter-spacing: 4px; margin-top: 0; }
+        .instructions {
+            background: rgba(255, 255, 255, 0.05); padding: 30px; border-radius: 15px;
+            border: 1px solid rgba(0, 255, 255, 0.3); max-width: 700px;
+            font-size: 20px; line-height: 1.8; color: #ddd; margin: 30px 0;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.1);
+        }
+        .instructions b { color: #ffff00; font-size: 22px; }
+        .clue { color: #ff55aa; font-weight: bold; font-size: 22px; margin-top: 15px; }
+        #overlay button {
+            margin-top: 20px; padding: 18px 50px; font-size: 28px; font-weight: bold; letter-spacing: 2px;
+            background: linear-gradient(45deg, #ff00ff, #00ffff); color: #fff;
+            border: none; border-radius: 50px; cursor: pointer; transition: 0.3s;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
+        }
+        #overlay button:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(255, 0, 255, 0.8); }
+        @keyframes pulse { 0% { opacity: 0.9; } 50% { opacity: 1; text-shadow: 0 0 50px rgba(0, 255, 255, 0.8); } 100% { opacity: 0.9; } }
+    </style>
+
+</head>
+<body>
+
+<div id="overlay">
+    <h1>ELYSIUM: THE FINDING</h1>
+    <h3>★ VIBE JAM 2026 ★</h3>
+    <div class="instructions">
+        <p>The ancient Omni-Spirit has hidden a Magic Pearl in this realm.</p>
+        <p><b>Press TAB</b> to talk to the Spirit. It will mock you, troll you, and alter reality if provoked.</p>
+        <p class="clue">🔍 CLUE: The real pearl emits a faint pillar of light upwards!</p>
+        <p style="font-size: 14px; color: #88ff88; margin-top: 25px; opacity: 0.8;">(Note: A tiny 130MB AI Brain will securely cache in your browser background while you play. Vibe pure, no servers.)</p>
+    </div>
+    <button id="startButton">DIVE IN</button>
+</div>
+
+    <div id="ui-layer">
+        <h1>Elysium The Deep Reef</h1>
+        <p>Click to Dive | Mouse to Look | WASD to Swim | Space/C to Ascend/Descend | Shift to Sprint | Tab to Talk to Spirit</p>
+    </div>
+
+    <!-- Modern Three.js ES Module Imports -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+        import { Water } from 'three/addons/objects/Water.js';
+        import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+        import { SimplexNoise } from 'three/addons/math/SimplexNoise.js';
+
+        // ==========================================
+        // 1. SCENE SETUP & FOG
+        // ==========================================
+        const scene = new THREE.Scene();
+window.__scene_ref = scene;
+        const WATER_LEVEL = 35.0;
+
+        // Linear fog that fades exactly to the background color to hide the horizon seam!
+        scene.fog = new THREE.Fog(0x0077ff, 10.0, 1500.0);
+        scene.background = new THREE.Color(0x0077ff);
+
+        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 8000);
+        camera.position.set(0, 35, 100); // Start 5 units below surface!
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio for massive performance gain
+        document.body.appendChild(renderer.domElement);
+
+        // ==========================================
+        // 2. LIGHTING & ENVIRONMENT
+        // ==========================================
+        const ambientLight = new THREE.AmbientLight(0x004488, 1.2);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xaaddff, 1.5);
+        sunLight.position.set(200, 500, 200);
+        scene.add(sunLight);
+
+        // SkyDome: Pure tropical blue to reflect perfectly on the Water.js surface from below!
+        const skyGeo = new THREE.SphereGeometry(4000, 32, 15);
+        const skyMat = new THREE.MeshBasicMaterial({ color: 0x0088ff, side: THREE.BackSide, fog: false }); // Bright vibrant blue sky!
+        const skyDome = new THREE.Mesh(skyGeo, skyMat);
+        scene.add(skyDome);
+
+        // ==========================================
+        // 3. CONTROLS & PHYSICS
+        // ==========================================
+        const controls = new PointerLockControls(camera, document.body);
+        const uiLayer = document.getElementById('ui-layer');
+        uiLayer.addEventListener('click', () => controls.lock());
+        controls.addEventListener('lock', () => uiLayer.style.display = 'none');
+        controls.addEventListener('unlock', () => uiLayer.style.display = 'flex');
+
+        let moveF = false, moveB = false, moveL = false, moveR = false, moveU = false, moveD = false, isSprint = false;
+        document.addEventListener('keydown', (e) => {
+            switch(e.code) {
+                case 'KeyW': moveF = true; break; case 'KeyS': moveB = true; break;
+                case 'KeyA': moveL = true; break; case 'KeyD': moveR = true; break;
+                case 'Space': moveU = true; break; case 'KeyC': moveD = true; break;
+                case 'ShiftLeft': isSprint = true; break;
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            switch(e.code) {
+                case 'KeyW': moveF = false; break; case 'KeyS': moveB = false; break;
+                case 'KeyA': moveL = false; break; case 'KeyD': moveR = false; break;
+                case 'Space': moveU = false; break; case 'KeyC': moveD = false; break;
+                case 'ShiftLeft': isSprint = false; break;
+            }
+        });
+
+        const velocity = new THREE.Vector3();
+        const direction = new THREE.Vector3();
+
+        // ==========================================
+        // 4. TERRAIN (MASSIVE DEPTH)
+        // ==========================================
+        const simplex = new SimplexNoise();
+        function getSeabedElevation(x, z) {
+            let e = simplex.noise(x * 0.0015, z * 0.0015) * 50.0; // Massive rolling dunes
+            e += simplex.noise(x * 0.01, z * 0.01) * 20.0;  
+            e += simplex.noise(x * 0.05, z * 0.05) * 5.0;   
+
+            let distFromCenter = Math.sqrt(x*x + z*z);
+            let trenchNoise = simplex.noise(x * 0.004, z * 0.004);
+            if (trenchNoise < -0.1) {
+                e -= Math.pow(Math.abs(trenchNoise + 0.1), 2.0) * 150.0; // Deep chasms
+            }
+
+            let centerTrench = Math.max(0, 800 - distFromCenter) / 800;
+            e -= centerTrench * centerTrench * 150.0; // Massive center trench
+
+            return e - 80.0; // Base depth pushes the highest peaks down to roughly Y=0 (40ft below water!)
+        }
+
+        const terrainGeo = new THREE.PlaneGeometry(5000, 5000, 256, 256);
+        terrainGeo.rotateX(-Math.PI / 2);
+        const tPos = terrainGeo.attributes.position;
+        for (let i = 0; i < tPos.count; i++) {
+            tPos.setY(i, getSeabedElevation(tPos.getX(i), tPos.getZ(i)));
+        }
+        terrainGeo.computeVertexNormals();
+
+        const seabedMat = new THREE.ShaderMaterial({
+            uniforms: { uTime: { value: 0 }, uSunColor: { value: sunLight.color }, uWaterColor: { value: new THREE.Color(0x0077ff) } },
+            vertexShader: `
+                uniform float uTime; varying vec3 vWorldPos; varying vec3 vNormal;
+                void main() {
+                    vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+                    vNormal = normalize(normalMatrix * normal);
+                    gl_Position = projectionMatrix * viewMatrix * vec4(vWorldPos, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float uTime; uniform vec3 uSunColor; uniform vec3 uWaterColor;
+                varying vec3 vWorldPos; varying vec3 vNormal;
+
+                float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+                float noise(vec2 p) { vec2 i=floor(p); vec2 f=fract(p); vec2 u=f*f*(3.0-2.0*f); return mix(mix(hash(i+vec2(0.0,0.0)),hash(i+vec2(1.0,0.0)),u.x),mix(hash(i+vec2(0.0,1.0)),hash(i+vec2(1.0,1.0)),u.x),u.y); }
+
+                float caustics(vec2 uv, float t) {
+                    vec2 p = uv * 2.0; float c = 0.0; float w = 1.0;
+                    for (int i=0; i<3; i++) {
+                        p += vec2(sin(t*0.5 + p.y), cos(t*0.6 + p.x));
+                        c += length(sin(p * w)) / w; w *= 2.0;
+                    }
+                    return pow(max(0.0, 1.0 - c * 0.2), 4.0);
+                }
+
+                void main() {
+                    vec3 sunDir = normalize(vec3(0.5, 1.0, 0.5));
+                    float diff = max(dot(vNormal, sunDir), 0.0);
+
+                    vec3 baseSand = vec3(0.5, 0.55, 0.45);
+                    float algaeMask = smoothstep(0.6, 0.8, noise(vWorldPos.xz * 0.02) * 0.5 + 0.5);
+                    float algaeDetail = smoothstep(0.3, 0.7, noise(vWorldPos.xz * 0.1) * 0.5 + 0.5);
+                    vec3 algaeColor = vec3(0.08, 0.2, 0.08); 
+                    vec3 sandColor = mix(baseSand, algaeColor, algaeMask * algaeDetail);
+
+                    float depthFade = smoothstep(0.0, -150.0, vWorldPos.y);
+                    sandColor = mix(sandColor, vec3(0.02, 0.04, 0.06), depthFade * 0.9); // Darken in trenches
+
+                    float cau = caustics(vWorldPos.xz * 0.08, uTime * 1.5) * smoothstep(-150.0, 0.0, vWorldPos.y) * 2.0;
+                    vec3 finalColor = sandColor * (diff * 0.7 + 0.3) + uSunColor * cau * diff * 0.4;
+
+                    float dist = length(cameraPosition - vWorldPos);
+                    float fog = smoothstep(50.0, 1500.0, dist);
+                    gl_FragColor = vec4(mix(finalColor, uWaterColor, fog), 1.0);
+                }
+            `
+        });
+        const terrainMesh = new THREE.Mesh(terrainGeo, seabedMat);
+        scene.add(terrainMesh);
+
+        // ==========================================
+        // 5. WATER SURFACE
+        // ==========================================
+        const waterGeo = new THREE.PlaneGeometry(8000, 8000, 128, 128);
+        const water = new Water(waterGeo, {
+            textureWidth: 512, textureHeight: 512,
+            waterNormals: new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/waternormals.jpg', function (texture) {
+                texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+            }),
+            sunDirection: new THREE.Vector3(0.5, 1.0, 0.5).normalize(),
+            sunColor: 0xffffff, waterColor: 0x00aaff, distortionScale: 6.0, fog: true
+        });
+        water.rotation.x = -Math.PI / 2;
+        water.position.y = WATER_LEVEL;
+        water.material.side = THREE.DoubleSide; // Visible from below!
+        water.material.transparent = true;
+        water.material.opacity = 0.85;
+        scene.add(water);
+
+        // ==========================================
+        // 6. PROCEDURAL CORAL GENERATORS (From User Code)
+        // ==========================================
+        function createBranchingGeo(radius, height, branches, spread, flatness) {
+            const geometries = [];
+            function branch(startPoint, dir, rad, len, depth) {
+                if (depth === 0) return;
+                const endPoint = startPoint.clone().add(dir.clone().multiplyScalar(len));
+                const geo = new THREE.CylinderGeometry(rad * 0.6, rad, len, 5, 1);
+                geo.translate(0, len / 2, 0);
+                geo.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
+                geo.translate(startPoint.x, startPoint.y, startPoint.z);
+                geo.scale(1, 1, flatness);
+                geometries.push(geo);
+
+                const numBranches = Math.floor(Math.random() * branches) + 1;
+                for (let i = 0; i < numBranches; i++) {
+                    const angle1 = (Math.random() - 0.5) * spread;
+                    const angle2 = (Math.random() - 0.5) * spread;
+                    const newDir = dir.clone().applyAxisAngle(new THREE.Vector3(1,0,0), angle1).applyAxisAngle(new THREE.Vector3(0,0,1), angle2).normalize();
+                    branch(endPoint, newDir, rad * 0.7, len * 0.75, depth - 1);
+                }
+            }
+            branch(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0), radius, height, 3);
+            return mergeGeometries(geometries);
+        }
+
+        const staghornGeo = createBranchingGeo(0.15, 1.5, 2, Math.PI/3, 1.0);
+        const elkhornGeo = createBranchingGeo(0.4, 2.0, 3, Math.PI/4, 0.3);
+        const seaFanGeo = createBranchingGeo(0.1, 1.0, 3, Math.PI/2, 0.05);
+
+        const brainGeo = new THREE.SphereGeometry(2, 32, 32);
+        const bPos = brainGeo.attributes.position;
+        for(let i=0; i<bPos.count; i++) {
+            const v = new THREE.Vector3(bPos.getX(i), bPos.getY(i), bPos.getZ(i));
+            const noise = Math.sin(v.x*4)*Math.cos(v.z*4)*0.2;
+            v.add(v.clone().normalize().multiplyScalar(noise));
+            bPos.setXYZ(i, v.x, v.y, v.z);
+        }
+        brainGeo.computeVertexNormals();
+
+        const mushGeo = new THREE.CylinderGeometry(2, 1.8, 0.5, 32);
+        const mPos = mushGeo.attributes.position;
+        for(let i=0; i<mPos.count; i++) {
+            const x = mPos.getX(i); const z = mPos.getZ(i);
+            const dist = Math.sqrt(x*x + z*z);
+            if (mPos.getY(i) > 0) mPos.setY(i, mPos.getY(i) + Math.sin(Math.atan2(z, x) * 40) * 0.1 + (2 - dist)*0.2);
+        }
+        mushGeo.computeVertexNormals();
+
+        function createTubeClusterGeo(count, radius, variance) {
+            const geos = [];
+            for(let i=0; i<count; i++) {
+                const r = Math.random() * variance; const theta = Math.random() * Math.PI * 2;
+                const x = Math.cos(theta) * r; const z = Math.sin(theta) * r;
+                const h = 1 + Math.random() * 2;
+                const geo = new THREE.CylinderGeometry(radius*0.8, radius, h, 6);
+                geo.translate(x, h/2, z);
+                const sphere = new THREE.SphereGeometry(radius*0.8, 6, 6);
+                sphere.translate(x, h, z);
+                geos.push(geo, sphere);
+            }
+            return mergeGeometries(geos);
+        }
+        const fingerGeo = createTubeClusterGeo(12, 0.4, 2);
+
+        function createSeaWhipGeo() {
+            const geos = [];
+            for(let i=0; i<4; i++) {
+                const curve = new THREE.CatmullRomCurve3([
+                    new THREE.Vector3(0, 0, 0), new THREE.Vector3((Math.random()-0.5), 2, (Math.random()-0.5)),
+                    new THREE.Vector3((Math.random()-0.5)*2, 4, (Math.random()-0.5)*2), new THREE.Vector3((Math.random()-0.5)*3, 6, (Math.random()-0.5)*3)
+                ]);
+                geos.push(new THREE.TubeGeometry(curve, 10, 0.1, 6, false));
+            }
+            return mergeGeometries(geos);
+        }
+        const whipGeo = createSeaWhipGeo();
+
+        function createTentacleGeo() {
+            const geos = [new THREE.CylinderGeometry(0.5, 0.8, 1, 16).translate(0, 0.5, 0)];
+            for(let i=0; i<30; i++) {
+                const geo = new THREE.ConeGeometry(0.05, 1, 4);
+                geo.translate(0, 0.5, 0); geo.rotateX(Math.PI/2 + (Math.random()*0.5));
+                geo.rotateY((i/30)*Math.PI*2); geo.translate(0, 1, 0);
+                geos.push(geo);
+            }
+            return mergeGeometries(geos);
+        }
+        const carnationGeo = createTentacleGeo();
+
+        function createFoxGeo() {
+            const geo = new THREE.SphereGeometry(3, 64, 64);
+            const pos = geo.attributes.position;
+            for(let i=0; i<pos.count; i++) {
+                const v = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
+                v.normalize();
+                const ridge = Math.abs(simplex.noise3d(v.x * 5, v.y * 5, v.z * 5));
+                v.multiplyScalar(3 + ridge * 1.5 - (v.y < 0 ? 1 : 0));
+                pos.setXYZ(i, v.x, v.y, v.z);
+            }
+            geo.computeVertexNormals();
+            return geo;
+        }
+        const foxGeo = createFoxGeo();
+
+        const coralMat = new THREE.ShaderMaterial({
+            uniforms: { uTime: { value: 0 }, uWaterColor: { value: new THREE.Color(0x0077ff) }, uSunColor: { value: sunLight.color } },
+            vertexShader: `
+                uniform float uTime;
+                varying vec3 vColor; varying vec3 vWorldPos; varying vec3 vNormal;
+                attribute vec3 aColor; attribute float aType;
+                void main() {
+                    vColor = aColor; vec3 pos = position;
+
+                    // Sway logic
+                    if ((aType > 2.5 && aType < 3.5) || (aType > 5.5 && aType < 6.5)) { // Sea Fan, Sea Whip
+                        pos.x += sin(uTime * 1.0 + instanceMatrix[3][0]) * 0.15 * pos.y;
+                    } else if ((aType > 4.5 && aType < 5.5) || (aType > 6.5 && aType < 7.5)) { // Finger, Carnation
+                        pos.z += sin(uTime * 1.2 + instanceMatrix[3][2]) * 0.1 * pos.y;
+                    } else if (aType < 1.5) { // Stag/Elk
+                        pos.x += sin(uTime * 0.5 + instanceMatrix[3][0]) * 0.02 * pos.y;
+                    }
+
+                    vec4 wPos = instanceMatrix * vec4(pos, 1.0);
+                    vWorldPos = wPos.xyz;
+                    vNormal = normalize(mat3(instanceMatrix) * normal);
+                    gl_Position = projectionMatrix * viewMatrix * wPos;
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 uSunColor; uniform vec3 uWaterColor; uniform float uTime;
+                varying vec3 vColor; varying vec3 vWorldPos; varying vec3 vNormal;
+
+                float caustics(vec2 uv, float t) {
+                    vec2 p = uv * 2.0; float c = 0.0; float w = 1.0;
+                    for (int i=0; i<3; i++) {
+                        p += vec2(sin(t*0.5 + p.y), cos(t*0.6 + p.x));
+                        c += length(sin(p * w)) / w; w *= 2.0;
+                    }
+                    return pow(max(0.0, 1.0 - c * 0.2), 4.0);
+                }
+
+                void main() {
+                    vec3 sunDir = normalize(vec3(0.5, 1.0, 0.5));
+                    float diff = max(dot(vNormal, sunDir), 0.0);
+                    vec3 viewDir = normalize(cameraPosition - vWorldPos);
+                    float rim = smoothstep(0.4, 1.0, 1.0 - max(dot(viewDir, vNormal), 0.0));
+
+                    float cau = caustics(vWorldPos.xz * 0.08, uTime * 1.5) * smoothstep(-150.0, 0.0, vWorldPos.y) * 2.0;
+                    vec3 finalColor = vColor * (diff * 0.7 + 0.3) + uSunColor * cau * diff * 0.5 + (vColor * rim * 1.0);
+
+                    float dist = length(cameraPosition - vWorldPos);
+                    float fog = smoothstep(50.0, 1500.0, dist);
+                    gl_FragColor = vec4(mix(finalColor, uWaterColor, fog), 1.0);
+                }
+            `,
+            side: THREE.DoubleSide
+        });
+
+        const coralTypes = 9;
+        const totalCorals = 70000;
+        const counts = [
+            Math.floor(totalCorals * 0.15), // 0: Staghorn
+            Math.floor(totalCorals * 0.15), // 1: Elkhorn
+            Math.floor(totalCorals * 0.15), // 2: Brain
+            Math.floor(totalCorals * 0.15), // 3: Sea Fan
+            Math.floor(totalCorals * 0.10), // 4: Mushroom
+            Math.floor(totalCorals * 0.10), // 5: Finger
+            Math.floor(totalCorals * 0.05), // 6: Whip
+            Math.floor(totalCorals * 0.10), // 7: Carnation
+            Math.floor(totalCorals * 0.05)  // 8: Fox
+        ];
+
+        const geos = [staghornGeo, elkhornGeo, brainGeo, seaFanGeo, mushGeo, fingerGeo, whipGeo, carnationGeo, foxGeo];
+        const insts = []; const colors = []; const types = []; const idxs = new Array(coralTypes).fill(0);
+
+        for (let i=0; i<coralTypes; i++) {
+            insts.push(new THREE.InstancedMesh(geos[i], coralMat, counts[i]));
+            colors.push(new Float32Array(counts[i] * 3));
+            types.push(new Float32Array(counts[i]).fill(i));
+        }
+
+        const dummy = new THREE.Object3D();
+        for (let i = 0; i < 400000; i++) {
+            let x = (Math.random()-0.5)*3000;
+            let z = (Math.random()-0.5)*3000;
+            if (simplex.noise(x * 0.005, z * 0.005) > 0.0) {
+                let y = getSeabedElevation(x, z);
+                if (y > 30 || y < -350) continue; // Don't spawn above water or too deep
+
+                let r = Math.random(); let type = 0;
+                if (r < 0.15) type = 0; else if (r < 0.3) type = 1; else if (r < 0.45) type = 2;
+                else if (r < 0.6) type = 3; else if (r < 0.7) type = 4; else if (r < 0.8) type = 5;
+                else if (r < 0.85) type = 6; else if (r < 0.95) type = 7; else type = 8;
+
+                if (idxs[type] < counts[type]) {
+                    let col = new THREE.Color();
+                    if (type === 0 || type === 1) col.setHex(Math.random() < 0.5 ? 0xcda653 : 0xb48b3b); // Stag/Elk
+                    else if (type === 2) col.setHex(Math.random() < 0.5 ? 0x2a8e6f : 0x44ccaa); // Brain
+                    else if (type === 3) col.setHex(Math.random() < 0.5 ? 0xdc4b4b : 0xff66bb); // Fan
+                    else if (type === 4) col.setHex(Math.random() < 0.5 ? 0x995533 : 0xcc7744); // Mush
+                    else if (type === 5) col.setHex(Math.random() < 0.5 ? 0xcca895 : 0xffaaaa); // Finger
+                    else if (type === 6) col.setHex(Math.random() < 0.5 ? 0xcc1122 : 0xa244ff); // Whip
+                    else if (type === 7) col.setHex(Math.random() < 0.5 ? 0xdc585a : 0xffaaaa); // Carnation
+                    else if (type === 8) col.setHex(0xccaacc); // Fox
+
+                    dummy.position.set(x, y, z);
+                    let s = Math.random() * 1.5 + 0.8;
+                    if (type === 0 || type === 1) dummy.scale.set(s*1.5, s*1.5, s*1.5);
+                    else if (type === 3) dummy.scale.set(s*2.5, s*2.5, s*0.2); // Fan
+                    else if (type === 4) dummy.scale.set(s*2.0, 1.0, s*(Math.random()*0.5+0.7)); // Mush
+                    else if (type === 6) dummy.scale.set(s*0.5, s*1.5, s*0.5); // Whip
+                    else dummy.scale.set(s, s, s);
+
+                    dummy.rotation.set(Math.random()*0.4, Math.random()*Math.PI, Math.random()*0.4);
+                    dummy.updateMatrix();
+                    insts[type].setMatrixAt(idxs[type], dummy.matrix);
+
+                    colors[type][idxs[type]*3] = col.r; colors[type][idxs[type]*3+1] = col.g; colors[type][idxs[type]*3+2] = col.b;
+                    idxs[type]++;
+                }
+            }
+        }
+
+        for (let i=0; i<coralTypes; i++) {
+            geos[i].setAttribute('aColor', new THREE.InstancedBufferAttribute(colors[i], 3));
+            geos[i].setAttribute('aType', new THREE.InstancedBufferAttribute(types[i], 1));
+            scene.add(insts[i]);
+        }
+
+        // ==========================================
+        // 7. FISHES & MANTAS
+        // ==========================================
+        const numFish = 3000;
+        const fishGeo = mergeGeometries([
+            new THREE.SphereGeometry(0.5, 12, 8).scale(1, 0.5, 2.0),
+            new THREE.ConeGeometry(0.4, 1.2, 3).rotateX(Math.PI/2).translate(0, 0, -1.5)
+        ]);
+
+        const fishMat = new THREE.ShaderMaterial({
+            uniforms: { uTime: { value: 0 }, uWaterColor: { value: new THREE.Color(0x0077ff) } },
+            vertexShader: `
+                uniform float uTime; varying vec3 vColor; varying vec3 vWorldPos; varying vec3 vNormal; varying float vZLocal;
+                attribute vec3 aColor;
+                void main() {
+                    vColor = aColor; vZLocal = position.z; vec3 pos = position;
+                    pos.x += sin(uTime * 15.0 + instanceMatrix[3][0] * 5.0 + pos.z * 3.0) * 0.2 * smoothstep(1.0, -1.5, pos.z);
+                    vec4 wPos = instanceMatrix * vec4(pos, 1.0);
+                    vWorldPos = wPos.xyz; vNormal = normalize(mat3(instanceMatrix) * normal);
+                    gl_Position = projectionMatrix * viewMatrix * wPos;
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 uWaterColor; varying vec3 vColor; varying vec3 vWorldPos; varying vec3 vNormal; varying float vZLocal;
+                void main() {
+                    float diff = max(dot(vNormal, normalize(vec3(0.5, 1.0, 0.5))), 0.0);
+                    float rim = smoothstep(0.4, 1.0, 1.0 - max(dot(normalize(cameraPosition - vWorldPos), vNormal), 0.0));
+
+                    vec3 baseCol = vColor;
+                    float tailMix = smoothstep(-1.0, 0.0, vZLocal);
+                    if (vColor.g > 0.0 && vColor.g < 0.6) baseCol = mix(vColor * 1.2, vec3(1.8, 1.8, 1.9), tailMix); // White glowing body!
+                    else if (vColor.b > 0.8 && vColor.r < 0.5) baseCol = vColor * 1.5; // Blue glow
+
+                    vec3 finalColor = baseCol * (diff * 0.7 + 0.3) + (vec3(1.0) * rim * 0.8);
+                    float fog = smoothstep(50.0, 1500.0, length(cameraPosition - vWorldPos));
+                    gl_FragColor = vec4(mix(finalColor, uWaterColor, fog), 1.0);
+                }
+            `,
+            side: THREE.DoubleSide
+        });
+
+        const fishInst = new THREE.InstancedMesh(fishGeo, fishMat, numFish);
+        const fishData = []; const fColors = new Float32Array(numFish * 3);
+
+        for(let i=0; i<numFish; i++) {
+            let pos = new THREE.Vector3((Math.random()-0.5)*2500, Math.random()*80 - 40, (Math.random()-0.5)*2500);
+            let vel = new THREE.Vector3((Math.random()-0.5), (Math.random()-0.5)*0.2, (Math.random()-0.5)).normalize().multiplyScalar(Math.random()*2+2);
+            let c = new THREE.Color(); let r = Math.random(); let scale = 1.0;
+
+            if(r < 0.25) { c.setHex(0xff4411); scale = Math.random() * 0.5 + 0.8; } // Vivid Orange tail
+            else if(r < 0.45) { c.setHex(0xff1144); scale = Math.random() * 0.4 + 0.6; } // Pink tail
+            else if(r < 0.55) { c.setHex(0xffdd00); scale = Math.random() * 0.6 + 0.8; } // Yellow tail
+            else if(r < 0.70) { c.setHex(0xffaa00); scale = Math.random() * 0.5 + 0.8; } // Pure orange
+            else if(r < 0.85) { c.setHex(0x22aaff); scale = Math.random() * 0.4 + 0.6; } // Cyan
+            else if(r < 0.95) { c.setHex(0x0044ff); scale = Math.random() * 0.3 + 0.4; vel.multiplyScalar(1.5); } // Dart
+            else { c.setHex(0x334455); scale = Math.random() * 3.0 + 3.0; vel.multiplyScalar(0.4); } // Grouper
+
+            fishData.push({ pos, vel, scale });
+            fColors[i*3] = c.r; fColors[i*3+1] = c.g; fColors[i*3+2] = c.b;
+        }
+        fishGeo.setAttribute('aColor', new THREE.InstancedBufferAttribute(fColors, 3));
+        scene.add(fishInst);
+
+        // ==========================================
+        // 8. GOD RAYS
+        // ==========================================
+        const rayGeo = new THREE.CylinderGeometry(20, 120, 300, 32, 1, true); // Original width!
+        rayGeo.translate(0, -100, 0);
+        const rayMat = new THREE.ShaderMaterial({
+            uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(0xaaddff) } },
+            vertexShader: `
+                uniform float uTime; varying vec2 vUv; varying vec3 vPos; varying vec3 vNormal;
+                void main() {
+                    vUv = uv; vec3 pos = position;
+                    vPos = (modelMatrix * instanceMatrix * vec4(pos, 1.0)).xyz;
+                    vNormal = normalize(mat3(instanceMatrix) * normal);
+                    pos.x += sin(uTime * 0.4 + pos.y * 0.02) * 5.0 * (1.0 - uv.y);
+                    gl_Position = projectionMatrix * viewMatrix * instanceMatrix * vec4(pos, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float uTime; uniform vec3 uColor; varying vec2 vUv; varying vec3 vPos; varying vec3 vNormal;
+                float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+                float noise(vec2 p) { vec2 i=floor(p); vec2 f=fract(p); vec2 u=f*f*(3.0-2.0*f); return mix(mix(hash(i+vec2(0.0,0.0)),hash(i+vec2(1.0,0.0)),u.x),mix(hash(i+vec2(0.0,1.0)),hash(i+vec2(1.0,1.0)),u.x),u.y); }
+                void main() {
+                    float n = noise(vec2(vUv.x * 6.0 + uTime*0.1, vUv.y * 1.5 - uTime * 0.1));
+                    float centerDist = abs(vUv.x - 0.5) * 2.0; 
+                    float edgeBlur = exp(-centerDist * centerDist * 5.0); // Soft, beautiful blur, not hard lines!
+                    float viewFade = smoothstep(0.0, 0.8, 1.0 - abs(dot(normalize(cameraPosition - vPos), vNormal)));
+                    float alpha = edgeBlur * smoothstep(0.3, 0.7, n) * viewFade * smoothstep(0.0, 0.2, vUv.y) * 0.25; // Brighter overall alpha
+                    gl_FragColor = vec4(uColor, alpha);
+                }
+            `,
+            transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+        });
+        const rayInst = new THREE.InstancedMesh(rayGeo, rayMat, 35);
+        for(let i=0; i<35; i++) {
+            dummy.position.set((Math.random()-0.5)*800, 40, (Math.random()-0.5)*800);
+            dummy.rotation.set(Math.random()*0.1, Math.random()*Math.PI, Math.random()*0.1);
+            dummy.updateMatrix(); rayInst.setMatrixAt(i, dummy.matrix);
+        }
+        scene.add(rayInst);
+
+        // ==========================================
+        // 9. ANIMATION LOOP
+        // ==========================================
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1); const time = clock.getElapsedTime();
+
+            // Depth Lighting & Fog calculations
+            let depthFactor = Math.max(0.0, Math.min(1.0, (camera.position.y + 150.0) / 190.0)); // Y from -150 to +40
+            sunLight.intensity = THREE.MathUtils.lerp(0.2, 2.0, depthFactor); // Stronger directional sun!
+            ambientLight.intensity = THREE.MathUtils.lerp(0.15, 1.8, depthFactor); // Brighter inside water!
+
+            let surfaceFogColor = new THREE.Color(0x2288cc); // Lighter, slightly teal tropical blue
+            let deepFogColor = new THREE.Color(0x002244); // Dark blue, not pitch black!
+            scene.fog.color.lerpColors(deepFogColor, surfaceFogColor, depthFactor);
+            scene.fog.near = THREE.MathUtils.lerp(5.0, 30.0, depthFactor);
+            scene.fog.far = THREE.MathUtils.lerp(600.0, 2000.0, depthFactor); // Push the fog back so you can see further!
+            scene.background = scene.fog.color; 
+
+            // Sync custom shaders to fog color
+            seabedMat.uniforms.uWaterColor.value.copy(scene.fog.color);
+            coralMat.uniforms.uWaterColor.value.copy(scene.fog.color);
+            fishMat.uniforms.uWaterColor.value.copy(scene.fog.color);
+
+            seabedMat.uniforms.uTime.value = time;
+            coralMat.uniforms.uTime.value = time;
+            fishMat.uniforms.uTime.value = time;
+            rayMat.uniforms.uTime.value = time;
+            if(water) water.material.uniforms['time'].value += delta;
+
+            // Boids Update
+            for(let i=0; i<numFish; i++) {
+                let f = fishData[i]; let p = f.pos; let v = f.vel;
+                if(p.x > 1200) v.x -= 0.05; if(p.x < -1200) v.x += 0.05;
+                if(p.z > 1200) v.z -= 0.05; if(p.z < -1200) v.z += 0.05;
+                let ground = getSeabedElevation(p.x, p.z);
+                if(p.y < ground + 4) v.y += 0.2; if(p.y > 36) v.y -= 0.2;
+
+                v.add(new THREE.Vector3(0, -p.y*0.0002, 0)); // No center schooling, just depth gravity
+                v.normalize(); p.addScaledVector(v, (10 + f.scale*5) * delta);
+
+                dummy.position.copy(p); dummy.lookAt(p.clone().add(v));
+                dummy.scale.set(f.scale, f.scale, f.scale);
+                dummy.updateMatrix(); fishInst.setMatrixAt(i, dummy.matrix);
+            }
+            fishInst.instanceMatrix.needsUpdate = true;
+
+            // Physics
+            if (controls.isLocked) {
+                let speed = isSprint ? 150.0 : 60.0;
+                direction.z = Number(moveF) - Number(moveB); direction.x = Number(moveR) - Number(moveL); direction.y = Number(moveU) - Number(moveD);
+                direction.normalize();
+                if (moveF || moveB) velocity.z -= direction.z * speed * delta;
+                if (moveL || moveR) velocity.x -= direction.x * speed * delta;
+                if (moveU || moveD) velocity.y += direction.y * speed * delta;
+                velocity.multiplyScalar(0.90);
+
+                let camDir = new THREE.Vector3(); camera.getWorldDirection(camDir);
+                let rightDir = new THREE.Vector3(); rightDir.crossVectors(camera.up, camDir).normalize();
+
+                camera.position.addScaledVector(camDir, -velocity.z * delta);
+                camera.position.addScaledVector(rightDir, velocity.x * delta);
+                camera.position.y += velocity.y * delta;
+
+                let ground = getSeabedElevation(camera.position.x, camera.position.z);
+                if(camera.position.y < ground + 2.0) camera.position.y = ground + 2.0;
+                if(camera.position.y > 38.0) camera.position.y = 38.0;
+            }
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+
+<!-- The Chat UI (Hidden by default) -->
+<div id="ai-ui-container" style="position: absolute; bottom: 40px; left: 40px; z-index: 1000; color: #00ffff; font-family: 'Courier New', Courier, monospace; pointer-events: none;">
+    <div id="ai-loading" style="font-size: 14px; color: #ff00ff; text-shadow: 1px 1px 2px black;">
+        [Waking up the Ancient Ocean Spirit...]
+    </div>
+    <div id="ai-dialogue" style="font-size: 24px; font-weight: bold; margin-bottom: 15px; text-shadow: 0px 0px 10px #ff00ff; max-width: 700px; transition: opacity 1s;">
+        ~ *silence of the deep* ~
+    </div>
+    <input type="text" id="player-input" placeholder="Press Tab to talk..." style="width: 500px; padding: 15px; background: rgba(0, 10, 20, 0.85); color: #00ffff; border: 2px solid #ff00ff; border-radius: 8px; font-size: 18px; display: none; pointer-events: auto; outline: none; box-shadow: 0 0 20px #ff00ff88;">
+</div>
+
+<script type="module">
+    import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+    
+    // --- ELYSIUM GAME LOGIC INJECTION ---
+    window.currentRealm = 1; 
+    window.secretPearlPosition = null;
+    let pearlMesh, clueLightBeam, vibePortalMesh;
+    let fakePearlMeshes = [];
+    let isTransitioning = false;
+
+    function hideThePearl() {
+        window.secretPearlPosition.set((Math.random() - 0.5) * 400, -20 - (Math.random() * 80), (Math.random() - 0.5) * 400);
+    }
+
+    const checkScene = setInterval(() => {
+        if (window.__scene_ref && window.__camera_ref && window.THREE) {
+            window.secretPearlPosition = new window.THREE.Vector3();
+            clearInterval(checkScene);
+            hideThePearl();
+
+            const pGeo = new window.THREE.SphereGeometry( 1.5, 32, 32 );
+            const pMat = new window.THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffaaaa, emissiveIntensity: 1.0 });
+            pearlMesh = new window.THREE.Mesh( pGeo, pMat );
+            pearlMesh.position.copy(window.secretPearlPosition);
+            window.__scene_ref.add( pearlMesh );
+
+            // CLUE: Faint light beam
+            const clueGeo = new window.THREE.CylinderGeometry(1, 4, 300, 16);
+            const clueMat = new window.THREE.MeshBasicMaterial({ color: 0xffffaa, transparent: true, opacity: 0.15, blending: window.THREE.AdditiveBlending, depthWrite: false, side: window.THREE.DoubleSide });
+            clueLightBeam = new window.THREE.Mesh(clueGeo, clueMat);
+            clueLightBeam.position.copy(window.secretPearlPosition); clueLightBeam.position.y += 150; 
+            window.__scene_ref.add(clueLightBeam);
+
+            // Fake Pearls
+            for(let i=0; i<15; i++) {
+                const fpMesh = new window.THREE.Mesh( pGeo, pMat.clone() ); 
+                fpMesh.position.set((Math.random() - 0.5) * 400, -20 - (Math.random() * 80), (Math.random() - 0.5) * 400);
+                window.__scene_ref.add( fpMesh );
+                fakePearlMeshes.push(fpMesh);
+            }
+
+            // Vibe Jam EXIT Portal (Far away)
+            const vGeo = new window.THREE.TorusGeometry( 3, 0.3, 16, 100 ); 
+            const vMat = new window.THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.5, side: window.THREE.DoubleSide });
+            vibePortalMesh = new window.THREE.Mesh( vGeo, vMat );
+            vibePortalMesh.position.set(300, -5, -300); 
+            window.__scene_ref.add( vibePortalMesh );
+
+            requestAnimationFrame(updateGameLoop);
+        }
+    }, 500);
+
+    function transitionToFlowerRealm() {
+        window.currentRealm = 2;
+        isTransitioning = true;
+        if (window.__scene_ref) {
+            window.__scene_ref.background = new window.THREE.Color(0xffb6c1); 
+            if (window.__scene_ref.fog) { window.__scene_ref.fog.color.setHex(0xffb6c1); window.__scene_ref.fog.density = 0.005; }
+        }
+
+        dialogueText.style.opacity = 1;
+        dialogueText.innerText = "Air Dude: FOOL! You only found the first one. Welcome to the Heavenly Flower Realm!";
+        dialogueText.style.color = "#ffff00";
+        if ('speechSynthesis' in window) {
+            let msg = new SpeechSynthesisUtterance("Fool! You only found the first one. Welcome to the Heavenly Flower Realm!");
+            msg.pitch = 1.5; msg.rate = 0.9; window.speechSynthesis.speak(msg);
+        }
+
+        setTimeout(() => {
+            isTransitioning = false;
+            hideThePearl();
+            pearlMesh.position.copy(window.secretPearlPosition);
+            clueLightBeam.position.copy(window.secretPearlPosition); clueLightBeam.position.y += 150;
+            fakePearlMeshes.forEach(fp => {
+                fp.position.set((Math.random() - 0.5) * 400, -20 - (Math.random() * 80), (Math.random() - 0.5) * 400);
+                fp.visible = true;
+            });
+        }, 6000);
+    }
+
+    async function triggerFakePearlLaugh() {
+        dialogueText.style.opacity = 1; dialogueText.style.color = "#ff0000";
+        dialogueText.innerText = "Omni-Spirit: HA! Fake pearl. You idiot.";
+        if ('speechSynthesis' in window) {
+            let msg = new SpeechSynthesisUtterance("Ha! Fake pearl. You idiot.");
+            msg.pitch = window.currentRealm === 1 ? 0.3 : 1.5; msg.rate = 0.9; window.speechSynthesis.speak(msg);
+        }
+    }
+
+    function updateGameLoop() {
+        if (window.__camera_ref && !isTransitioning) {
+            const camPos = window.__camera_ref.position;
+            if (vibePortalMesh) {
+                vibePortalMesh.rotation.y += 0.01;
+                if (camPos.distanceTo(vibePortalMesh.position) < 4) {
+                    isTransitioning = true;
+                    window.location.href = `https://vibejam.cc/portal/2026?ref=${window.location.hostname||"local"}`;
+                }
+            }
+            if (pearlMesh) {
+                pearlMesh.rotation.y += 0.05;
+                if (camPos.distanceTo(pearlMesh.position) < 3.0) {
+                    if (window.currentRealm === 1) transitionToFlowerRealm();
+                    else {
+                        isTransitioning = true;
+                        document.getElementById('overlay').style.display = 'flex';
+                        document.getElementById('overlay').innerHTML = `<h1>YOU BEAT THE VIBE JAM!</h1><p>The Spirits respect you.</p>`;
+                        if ('speechSynthesis' in window) {
+                            let msg = new SpeechSynthesisUtterance("You actually did it. I bow to your vibe.");
+                            msg.pitch = 1.0; window.speechSynthesis.speak(msg);
+                        }
+                    }
+                }
+            }
+            for(let i=0; i<fakePearlMeshes.length; i++) {
+                let fp = fakePearlMeshes[i];
+                if (fp.visible && camPos.distanceTo(fp.position) < 3.0) {
+                    fp.visible = false; 
+                    triggerFakePearlLaugh();
+                    if(window.executeMakersMode && window.currentRealm === 1) window.executeMakersMode("kraken_quake");
+                }
+            }
+        }
+        requestAnimationFrame(updateGameLoop);
+    }
+    // --- END GAME LOGIC INJECTION ---
+
+    const uiContainer = document.getElementById('ai-ui-container');
+    const loadingText = document.getElementById('ai-loading');
+    const dialogueText = document.getElementById('ai-dialogue');
+    const inputField = document.getElementById('player-input');
+
+    let engine;
+    let isChatOpen = false;
+    let textFadeTimeout;
+
+    // EPIC PROMPT UPGRADE
+    
+    function getSystemPrompt() {
+        let distStr = window.__camera_ref ? Math.round(window.__camera_ref.position.distanceTo(window.secretPearlPosition)).toString() : "unknown";
+        if (window.currentRealm === 1) {
+            return `You are the Omni-Spirit, a dark, sarcastic being hiding a Magic Pearl in the ocean.
+Distance to real pearl: ${distStr}m.
+Respond ONLY in exact JSON: {"dialogue": "sharp troll reply under 15 words", "action": "none"}
+Actions: "none", "blood_ocean", "abyss_darkness", "kraken_quake", "acid_trip"
+Mock the diver based on distance. Do not act like an AI.`;
+        } else {
+            return `You are The Air Dude, a hilarious, sassy spirit of the Heavenly Flower Realm.
+Distance to real pearl: ${distStr}m.
+Respond ONLY in exact JSON: {"dialogue": "funny sassy reply under 15 words", "action": "none"}
+Actions: "none", "kraken_quake", "acid_trip"
+Troll the player. Be funny.`;
+        }
+    }
+
+
+    async function initAI() {
+        const initProgressCallback = (progress) => {
+            loadingText.innerText = progress.text;
+        };
+
+        try {
+            const selectedModel = "SmolLM2-360M-Instruct-q4f32_1-MLC";
+            engine = await webllm.CreateMLCEngine(selectedModel, { 
+                initProgressCallback,
+            });
+
+            loadingText.innerText = "[The Ocean is listening...]";
+            setTimeout(() => loadingText.style.display = 'none', 3000);
+        } catch (err) {
+            loadingText.innerText = "Failed to wake the ocean spirit: " + err;
+            console.error("WebLLM Error:", err);
+        }
+    }
+
+    // SPOOKY VOICE SYNTHESIS
+    function speakSpooky(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // stop current speech
+            let msg = new SpeechSynthesisUtterance(text);
+            msg.pitch = 0.3; // Deep voice
+            msg.rate = 0.85; // Slow and deliberate
+            msg.volume = 1.0;
+
+            // Try to find a good English voice
+            let voices = window.speechSynthesis.getVoices();
+            let ukVoice = voices.find(v => v.lang === 'en-GB' && v.name.includes('Male'));
+            if(ukVoice) msg.voice = ukVoice;
+
+            window.speechSynthesis.speak(msg);
+        }
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+            e.preventDefault(); 
+            isChatOpen = !isChatOpen;
+
+            if (isChatOpen) {
+                inputField.style.display = 'block';
+                inputField.focus();
+            } else {
+                inputField.style.display = 'none';
+                inputField.value = '';
+                inputField.blur();
+            }
+        }
+    });
+
+    inputField.addEventListener('keydown', (e) => {
+        if(e.key !== 'Tab' && e.key !== 'Escape') {
+            e.stopPropagation();
+        }
+    });
+
+    inputField.addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter' && inputField.value.trim() !== '') {
+            const playerText = inputField.value;
+            inputField.value = '';
+            inputField.style.display = 'none';
+            isChatOpen = false;
+
+            clearTimeout(textFadeTimeout);
+            dialogueText.style.opacity = 1;
+            dialogueText.innerText = "You: " + playerText;
+            dialogueText.style.color = "#888888"; 
+
+            if (!engine) {
+                dialogueText.innerText = "~ The ocean is still waking up... ~";
+                return;
+            }
+
+            try {
+                // FIXED THE LONG ESSAY BUG: Added max_tokens!
+                const reply = await engine.chat.completions.create({
+                    messages: [
+                        { role: "system", content: getSystemPrompt() },
+                        { role: "user", content: playerText }
+                    ],
+                    temperature: 0.8,
+                    max_tokens: 45 // Forces it to stop generating after ~45 tokens! No more 5-minute essays!
+                });
+
+                let content = reply.choices[0].message.content;
+                content = content.replace(/```json|```/g, '').trim();
+
+                const jsonStartIndex = content.indexOf('{');
+                const jsonEndIndex = content.lastIndexOf('}');
+
+                let directorOutput;
+                if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
+                    content = content.substring(jsonStartIndex, jsonEndIndex + 1);
+                    try {
+                        directorOutput = JSON.parse(content);
+                    } catch (parseErr) {
+                        directorOutput = { dialogue: "I am speechless...", action: "none" };
+                    }
+                } else {
+                    directorOutput = { dialogue: content, action: "none" };
+                }
+
+                dialogueText.style.color = "#ff00ff"; 
+                dialogueText.innerText = "Ocean Spirit: " + (directorOutput.dialogue || "Bloop.");
+
+                // Trigger Voice!
+                speakSpooky(directorOutput.dialogue);
+
+                // Fade out text after 8 seconds
+                textFadeTimeout = setTimeout(() => {
+                    dialogueText.style.opacity = 0;
+                }, 8000);
+
+                if (window.executeActionInThreeJS) {
+                    window.executeActionInThreeJS(directorOutput.action || "none");
+                }
+
+            } catch (err) {
+                console.error("AI Error:", err);
+                dialogueText.innerText = "~ The water ripples strangely... ~";
+            }
+        }
+    });
+
+    
+    // Start AI only when button is clicked to prevent blank loading
+    document.getElementById('startButton').addEventListener('click', () => {
+        document.getElementById('overlay').style.display = 'none';
+        initAI();
+
+    setInterval(async () => {
+        if (!engine || isChatOpen || isTransitioning || Math.random() < 0.5) return;
+        try {
+            const reply = await engine.chat.completions.create({
+                messages: [{ role: "system", content: getSystemPrompt() }, { role: "user", content: "Say something totally unprompted to troll the player about finding the pearl." }],
+                temperature: 0.9, max_tokens: 80 
+            });
+            let content = reply.choices[0].message.content.replace(/```json|```/g, '').trim();
+            const jStart = content.indexOf('{'); const jEnd = content.lastIndexOf('}');
+            let txt = content;
+            if (jStart !== -1 && jEnd !== -1) {
+                try { txt = JSON.parse(content.substring(jStart, jEnd + 1)).dialogue; } catch (e) {}
+            }
+            dialogueText.style.opacity = 1;
+            dialogueText.style.color = "#ff8800";
+            dialogueText.innerText = (window.currentRealm===1?"Omni-Spirit: ":"Air Dude: ") + txt;
+            speakSpooky(txt);
+            setTimeout(() => dialogueText.style.opacity = 0, 8000);
+        } catch(e) {}
+    }, 30000);
+ 
+    });
+
+
+    // EPIC WORLD MANIPULATION FUNCTIONS
+    window.executeActionInThreeJS = function(action) {
+        console.log("Spirit commanded:", action);
+
+        if (action === "blood_ocean") {
+            console.log("The ocean turns to blood!");
+            if(window.scene && window.scene.fog) {
+                window.scene.fog.color.setHex(0x5a0000); // Deep dark red
+                window.scene.background = new window.THREE.Color(0x5a0000);
+            }
+        } 
+        else if (action === "abyss_darkness") {
+            console.log("Welcome to the abyss...");
+            if(window.scene && window.scene.fog) {
+                window.scene.fog.color.setHex(0x020205); // Pitch black/blue
+                window.scene.background = new window.THREE.Color(0x020205);
+                window.scene.fog.density = 0.08; // extremely thick fog
+            }
+        } 
+        else if (action === "kraken_quake") {
+            console.log("THE KRAKEN AWAKENS!");
+            // Camera Shake Effect!
+            let shakeTicks = 0;
+            const maxTicks = 30; // 1.5 seconds of shaking
+            const originalY = window.camera ? window.camera.position.y : 0;
+
+            const shakeInterval = setInterval(() => {
+                if(window.camera) {
+                    // Random violent jitter
+                    window.camera.position.x += (Math.random() - 0.5) * 4;
+                    window.camera.position.y += (Math.random() - 0.5) * 4;
+                    window.camera.rotation.z += (Math.random() - 0.5) * 0.05;
+                }
+                shakeTicks++;
+                if(shakeTicks > maxTicks) {
+                    clearInterval(shakeInterval);
+                    if(window.camera) window.camera.rotation.z = 0; // reset rotation
+                }
+            }, 50);
+        }
+    };
+</script>
+
+</body>
+</html>
